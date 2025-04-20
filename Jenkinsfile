@@ -34,7 +34,7 @@ pipeline {
                 lftp -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER <<EOF
                 /var/lib/jenkins/workspace/NewStaticWebsite/deploy_log.txt 2>&1
                 set ssl:verify-certificate no
-                mirror -R --delete $LOCAL_DIR /public_html/
+                mirror -R --delete files/public_html/
                 quit
                 EOF
                 '''
