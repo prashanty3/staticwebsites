@@ -19,24 +19,19 @@ pipeline {
         stage('Validate FTP Access') {
             steps {
                 script {
-                    try {
-                        withCredentials([usernamePassword(
-                            credentialsId: "${env.FTP_CREDENTIALS_ID}",
-                            usernameVariable: 'FTP_USER',
-                            passwordVariable: 'FTP_PASS'
-                        )]) {
-                            sh """
-                                lftp -e "
-                                    set ftp:ssl-allow no;
-                                    open ftp://${env.FTP_USERNAME}:${FTP_PASS}@${env.FTP_SERVER};
-                                    ls ${env.FTP_REMOTE_DIR};
-                                    quit
-                                " || exit 1
-                            """
-                        }
-                        echo "✅ FTP connection validated"
-                    } catch (Exception e) {
-                        error "❌ FTP validation failed: ${e.message}"
+                    withCredentials([usernamePassword(
+                        credentialsId: "${env.FTP_CREDENTIALS_ID}",
+                        usernameVariable: 'FTP_USER',
+                        passwordVariable: 'FTP_PASS'
+                    )]) {
+                        sh '''
+                            lftp -e "
+                                set ftp:ssl-allow no;
+                                open ftp://$FTP_USER:$FTP_PASS@${env.FTP_SERVER};
+                                ls ${env.FTP_REMOTE_DIR};
+                                quit
+                            " || exit 1
+                        '''.stripIndent()
                     }
                 }
             }
@@ -45,24 +40,20 @@ pipeline {
         stage('Backup Remote Files') {
             steps {
                 script {
-                    try {
-                        withCredentials([usernamePassword(
-                            credentialsId: "${env.FTP_CREDENTIALS_ID}",
-                            passwordVariable: 'FTP_PASS'
-                        )]) {
-                            sh """
-                                backup_dir="${env.FTP_REMOTE_DIR}_backup_`date +'%Y%m%d'`"
-                                lftp -e "
-                                    set ftp:ssl-allow no;
-                                    open ftp://${env.FTP_USERNAME}:${FTP_PASS}@${env.FTP_SERVER};
-                                    mirror --reverse --delete ${env.FTP_REMOTE_DIR} \${backup_dir};
-                                    quit
-                                "
-                            """
-                        }
-                        echo "✅ Backup created"
-                    } catch (Exception e) {
-                        echo "⚠️ Backup skipped (non-critical): ${e.message}"
+                    withCredentials([usernamePassword(
+                        credentialsId: "${env.FTP_CREDENTIALS_ID}",
+                        usernameVariable: 'FTP_USER',
+                        passwordVariable: 'FTP_PASS'
+                    )]) {
+                        sh '''
+                            backup_dir="${env.FTP_REMOTE_DIR}_backup_$(date +'%Y%m%d')"
+                            lftp -e "
+                                set ftp:ssl-allow no;
+                                open ftp://$FTP_USER:$FTP_PASS@${env.FTP_SERVER};
+                                mirror --reverse --delete ${env.FTP_REMOTE_DIR} $backup_dir;
+                                quit
+                            "
+                        '''.stripIndent()
                     }
                 }
             }
@@ -100,27 +91,8 @@ pipeline {
                     if (status != "200") {
                         error "❌ Deployment failed: Site returned HTTP ${status}"
                     }
-                    echo "✅ Smoke test passed (HTTP 200)"
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            slackSend(
-                channel: '#deployments',
-                message: "✅ Success: Deployed to ${env.DEPLOYMENT_URL} (Build ${env.BUILD_NUMBER})"
-            )
-        }
-        failure {
-            slackSend(
-                channel: '#deployments',
-                message: "❌ Failed: Deployment to ${env.DEPLOYMENT_URL} (Build ${env.BUILD_NUMBER})"
-            )
-        }
-        always {
-            echo "Pipeline completed. Status: ${currentBuild.currentResult}"
         }
     }
 }
