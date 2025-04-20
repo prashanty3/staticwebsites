@@ -23,8 +23,7 @@ pipeline {
         stage('Deploy to Hostinger') {
             steps {
                 sh '''
-                if ! command -v lftp &> /dev/null
-                then
+                if ! command -v lftp > /dev/null 2>&1; then
                     echo "❌ 'lftp' is not installed. Please install it on the Jenkins server manually."
                     exit 1
                 fi
