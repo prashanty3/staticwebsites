@@ -16,86 +16,126 @@ pipeline {
             }
         }
 
-        stage('Security Scan (Optional)') {
-            steps {
-                echo "🔍 Skipping security scan — no dependencies"
-            }
-        }
-
         stage('Prepare Deployment') {
             steps {
                 sh '''
                 echo "📂 Verifying workspace contents:"
                 ls -la
+                echo "Total files: $(find . -type f | wc -l)"
                 
-                # Ensure index.html exists
-                if [ ! -f index.html ] && [ ! -f Index.html ]; then
-                    echo "⚠️ Warning: No index.html found in root directory"
-                    find . -name "index.html" -o -name "Index.html"
-                fi
+                # Create a test file to verify upload is working
+                echo "Test file from Jenkins - $(date)" > jenkins_test_file.txt
                 '''
             }
         }
 
-        stage('Deploy to Hostinger') {
+        stage('Debug Remote Server') {
             steps {
                 sh '''
-                if ! command -v lftp > /dev/null 2>&1; then
-                    echo "❌ 'lftp' is not installed. Installing now..."
-                    apt-get update && apt-get install -y lftp || yum install -y lftp
-                fi
+                echo "🔍 Checking remote server structure..."
+                
+                lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" -e "
+                    pwd;
+                    ls -la;
+                    cd /;
+                    pwd;
+                    ls -la;
+                    quit
+                " || echo "Error in debug connection"
+                '''
+            }
+        }
 
-                echo "🔐 Connecting to FTP server..."
+        stage('Deploy to Hostinger (Direct Method)') {
+            steps {
+                sh '''
+                echo "🔄 Using alternative upload method..."
                 
-                # Create a temporary lftp script with proper error handling
-                cat > deploy.lftp << EOF
-                open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" 
-                set ssl:verify-certificate no
-                set ftp:ssl-allow yes
-                set ftp:ssl-force yes
-                set ftp:ssl-protect-data yes
-                set net:timeout 10
-                set net:max-retries 3
-                set net:reconnect-interval-base 5
-                set net:reconnect-interval-multiplier 1
+                # Create a different approach using curl/ftp
+                find . -type f -not -path "*/\\.*" | while read file; do
+                    if [[ "$file" == ./* ]]; then
+                        # Remove leading ./
+                        relative_file="${file:2}"
+                    else
+                        relative_file="$file"
+                    fi
+                    
+                    if [[ -n "$relative_file" && "$relative_file" != "." && "$relative_file" != ".." ]]; then
+                        # Create directory if needed
+                        dir=$(dirname "$relative_file")
+                        if [[ "$dir" != "." ]]; then
+                            echo "Creating directory: $dir"
+                            lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" -e "
+                                cd $REMOTE_DIR;
+                                mkdir -p $dir;
+                                quit
+                            " || echo "Could not create directory $dir"
+                        fi
+                        
+                        # Upload file
+                        echo "Uploading: $file to $REMOTE_DIR/$relative_file"
+                        curl -v --ftp-ssl --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                             --ftp-create-dirs -T "$file" \
+                             "ftp://$FTP_SERVER/$REMOTE_DIR/$relative_file" || echo "Failed uploading $file"
+                    fi
+                done
+                '''
+            }
+        }
+
+        stage('Deploy to Hostinger (Fallback)') {
+            steps {
+                sh '''
+                echo "🔄 Trying alternative FTP client (ncftp)..."
                 
-                # Debug - check remote directory contents
-                ls -la $REMOTE_DIR
+                # Install ncftp if not available
+                if ! command -v ncftp > /dev/null 2>&1; then
+                    apt-get update && apt-get install -y ncftp || yum install -y ncftp || echo "Could not install ncftp"
+                fi
                 
-                # Upload files with better sync options
-                mirror -R --parallel=5 --verbose=3 --delete --ignore-time --no-perms "$LOCAL_DIR" "$REMOTE_DIR"
-                
-                # Verify upload
-                ls -la $REMOTE_DIR
-                
-                bye
+                if command -v ncftp > /dev/null 2>&1; then
+                    # Create a temporary password file for ncftp
+                    echo "$FTP_PASSWORD" > ncftp_password.txt
+                    
+                    # Try using ncftp as an alternative
+                    ncftp -u "$FTP_USERNAME" -p "$FTP_PASSWORD" "$FTP_SERVER" << EOF
+                    cd $REMOTE_DIR
+                    lcd .
+                    put -R *
+                    bye
                 EOF
-                
-                # Execute the script
-                lftp -f deploy.lftp || (echo "❌ FTP upload failed" && exit 1)
-                
-                echo "✅ Files uploaded successfully"
+                    rm ncftp_password.txt
+                else
+                    echo "⚠️ ncftp not available, skipping fallback"
+                fi
                 '''
             }
         }
 
-        stage('Post-Deployment Verification') {
+        stage('Verify Deployment') {
             steps {
                 sh '''
-                echo "🔍 Verifying deployment..."
-                curl -s -I "http://$FTP_SERVER" || echo "⚠️ Could not verify site is up"
-                echo "🚀 Deployment completed!"
+                echo "🔍 Verifying files were uploaded..."
+                lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" -e "
+                    cd $REMOTE_DIR;
+                    ls -la;
+                    find . -type f | wc -l;
+                    quit
+                " || echo "Could not verify file count"
+                
+                echo "🚀 Deployment attempts completed"
                 '''
             }
         }
     }
     
     post {
-        success {
-            echo "✅ Pipeline executed successfully!"
-        }
-        failure {
-            echo "❌ Pipeline failed, check logs for details"
+        always {
+            echo "💡 If files are still not visible, try these troubleshooting steps:"
+            echo "1. Check if Hostinger has a different FTP host than your domain name"
+            echo "2. Verify if Hostinger uses a different root directory than 'public_html'"
+            echo "3. Check if FTP user has proper permissions"
+            echo "4. Try a manual FTP upload with FileZilla or similar tool"
         }
     }
 }
