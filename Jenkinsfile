@@ -10,6 +10,12 @@ pipeline {
     }
 
     stages {
+        stage('Install LFTP') {
+            steps {
+                sh 'sudo apt-get update && sudo apt-get install -y lftp'
+            }
+        }
+
         stage('Checkout Code') {
             steps {
                 git credentialsId: 'github-token-new-new', url: 'https://github.com/prashanty3/staticwebsites.git'
@@ -24,14 +30,13 @@ pipeline {
                         usernameVariable: 'FTP_USER',
                         passwordVariable: 'FTP_PASS'
                     )]) {
-                        sh '''
-                            lftp -e "
+                        sh """
+                            lftp -u "\$FTP_USER","\$FTP_PASS" -e "
                                 set ftp:ssl-allow no;
-                                open ftp://$FTP_USER:$FTP_PASS@${env.FTP_SERVER};
                                 ls ${env.FTP_REMOTE_DIR};
                                 quit
-                            " || exit 1
-                        '''.stripIndent()
+                            " ${env.FTP_SERVER}
+                        """
                     }
                 }
             }
@@ -45,15 +50,13 @@ pipeline {
                         usernameVariable: 'FTP_USER',
                         passwordVariable: 'FTP_PASS'
                     )]) {
-                        sh '''
-                            backup_dir="${env.FTP_REMOTE_DIR}_backup_$(date +'%Y%m%d')"
-                            lftp -e "
+                        sh """
+                            lftp -u "\$FTP_USER","\$FTP_PASS" -e "
                                 set ftp:ssl-allow no;
-                                open ftp://$FTP_USER:$FTP_PASS@${env.FTP_SERVER};
-                                mirror --reverse --delete ${env.FTP_REMOTE_DIR} $backup_dir;
+                                mirror --reverse --delete ${env.FTP_REMOTE_DIR} ${env.FTP_REMOTE_DIR}_backup_\$(date +'%Y%m%d');
                                 quit
-                            "
-                        '''.stripIndent()
+                            " ${env.FTP_SERVER}
+                        """
                     }
                 }
             }
@@ -91,8 +94,21 @@ pipeline {
                     if (status != "200") {
                         error "❌ Deployment failed: Site returned HTTP ${status}"
                     }
+                    echo "✅ Smoke test passed (HTTP 200)"
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo "🚀 Deployment completed with status: ${currentBuild.currentResult}"
+        }
+        success {
+            echo "✅ Deployment succeeded!"
+        }
+        failure {
+            echo "❌ Deployment failed!"
         }
     }
 }
