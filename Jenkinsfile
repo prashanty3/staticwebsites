@@ -4,14 +4,14 @@ pipeline {
     environment {
         FTP_SERVER = '145.223.17.179'
         FTP_USERNAME = 'u964324091'
-        FTP_PASSWORD = 'Riya@1234'
+        FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.' 
     }
 
     stages {
         stage('Checkout Code') {
             steps { 
-                git credentialsId: 'github-token-new', url: 'https://github.com/prashanty3/staticwebsite.git'
+                git credentialsId: 'github-token-new-new', url: 'https://github.com/prashanty3/staticwebsites.git'
             }
         }
 
