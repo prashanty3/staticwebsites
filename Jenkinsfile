@@ -24,7 +24,13 @@ pipeline {
         stage('Deploy to Hostinger') {
             steps {
                 sh """
-                apt-get update && apt-get install -y lftp
+                 if ! command -v lftp &> /dev/null
+                then
+                    echo "❌ 'lftp' is not installed. Please install it on the Jenkins server manually."
+                    sudo apt-get update
+                    sudo apt-get install -y lftp
+                    exit 1
+                fi
                 lftp -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER <<EOF
                 mirror -R --delete $LOCAL_DIR /public_html/
                 quit
