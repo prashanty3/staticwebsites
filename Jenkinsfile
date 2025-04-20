@@ -5,8 +5,8 @@ pipeline {
         FTP_PORT = "21"
         FTP_USERNAME = "u964324091"
         FTP_REMOTE_DIR = "public_html"
-        FTP_CREDENTIALS_ID = "hostinger-ftp-credentials" 
-        DEPLOYMENT_URL = "shobhityadav.com"
+        FTP_CREDENTIALS_ID = "hostinger-ftp-credentials"
+        DEPLOYMENT_URL = "https://shobhityadav.com"
     }
 
     stages {
@@ -51,15 +51,16 @@ pipeline {
                             passwordVariable: 'FTP_PASS'
                         )]) {
                             sh """
+                                backup_dir="${env.FTP_REMOTE_DIR}_backup_`date +'%Y%m%d'`"
                                 lftp -e "
                                     set ftp:ssl-allow no;
                                     open ftp://${env.FTP_USERNAME}:${FTP_PASS}@${env.FTP_SERVER};
-                                    mirror --reverse --delete ${env.FTP_REMOTE_DIR} ${env.FTP_REMOTE_DIR}_backup_$(date +'%Y%m%d');
+                                    mirror --reverse --delete ${env.FTP_REMOTE_DIR} \${backup_dir};
                                     quit
                                 "
                             """
                         }
-                        echo "✅ Backup created: ${env.FTP_REMOTE_DIR}_backup_$(date +'%Y%m%d')"
+                        echo "✅ Backup created"
                     } catch (Exception e) {
                         echo "⚠️ Backup skipped (non-critical): ${e.message}"
                     }
@@ -91,7 +92,7 @@ pipeline {
         stage('Smoke Test') {
             steps {
                 script {
-                    sleep(time: 10, unit: 'SECONDS')  // Wait for FTP sync
+                    sleep(time: 10, unit: 'SECONDS')
                     def status = sh(
                         script: "curl -s -o /dev/null -w '%{http_code}' ${env.DEPLOYMENT_URL}",
                         returnStdout: true
