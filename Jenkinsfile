@@ -31,10 +31,9 @@ pipeline {
 
                 echo "✅ 'lftp' is available. Proceeding with FTP deployment."
 
-                lftp -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER <<EOF
-                /var/lib/jenkins/workspace/NewStaticWebsite/deploy_log.txt 2>&1
+                lftp -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER <<EOF > /var/lib/jenkins/workspace/NewStaticWebsite/deploy_log.txt 2>&1
                 set ssl:verify-certificate no
-                mirror -R --delete /public_html/
+                mirror -R --delete $LOCAL_DIR /public_html/
                 quit
                 EOF
                 '''
