@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        FTP_SERVER = 'google.com'
+        FTP_SERVER = 'https://shobhityadav.com/'
         FTP_USERNAME = 'u964324091'
         FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.' 
