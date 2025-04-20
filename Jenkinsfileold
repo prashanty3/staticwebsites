@@ -1,0 +1,30 @@
+pipeline {
+    agent any
+
+
+    stages {
+        stage('Checkout Code') {
+            steps { 
+                git credentialsId: 'github-token-new-new', url: 'https://github.com/prashanty3/staticwebsites.git'
+            }
+        }
+
+        stage('Security Scan (Optional)') {
+            steps {
+                echo "🔍 Skipping security scan — no dependencies"
+            }
+        }
+
+        stage('Deploy to Hostinger') {
+            steps {
+               
+            }
+        }
+
+        stage('Post-Deployment') {
+            steps {
+                echo "🚀 Deployment completed!"
+            }
+        }
+    }
+}
