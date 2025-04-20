@@ -20,22 +20,27 @@ pipeline {
                 echo "🔍 Skipping security scan — no dependencies"
             }
         }
-
         stage('Deploy to Hostinger') {
             steps {
-                sh """
-                 if ! command -v lftp &> /dev/null
+                sh '''
+                if ! command -v lftp &> /dev/null
                 then
                     echo "❌ 'lftp' is not installed. Please install it on the Jenkins server manually."
-                    sudo apt-get update
-                    sudo apt-get install -y lftp
                     exit 1
                 fi
+
+                echo "✅ 'lftp' is available. Proceeding with FTP deployment."
+
                 lftp -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER <<EOF
                 mirror -R --delete $LOCAL_DIR /public_html/
                 quit
                 EOF
-                """
+                '''
+            }
+        }
+        stage('Post-Deployment') {
+            steps {
+                echo "🚀 Deployment completed!"
             }
         }
     }
