@@ -10,9 +10,21 @@ pipeline {
     }
 
     stages {
-        stage('Install LFTP') {
+        stage('Verify Dependencies') {
             steps {
-                sh 'sudo apt-get update && sudo apt-get install -y lftp'
+                script {
+                    // Check if lftp is available
+                    def lftpCheck = sh(script: 'which lftp || true', returnStdout: true).trim()
+                    if (!lftpCheck) {
+                        error("LFTP is not installed on this agent. Please use an agent with LFTP pre-installed or contact your administrator.")
+                    }
+                    
+                    // Verify curl is available for smoke test
+                    def curlCheck = sh(script: 'which curl || true', returnStdout: true).trim()
+                    if (!curlCheck) {
+                        error("Curl is not installed on this agent. Required for smoke tests.")
+                    }
+                }
             }
         }
 
@@ -30,13 +42,13 @@ pipeline {
                         usernameVariable: 'FTP_USER',
                         passwordVariable: 'FTP_PASS'
                     )]) {
-                        sh """
-                            lftp -u "\$FTP_USER","\$FTP_PASS" -e "
+                        sh '''
+                            lftp -u "$FTP_USER","$FTP_PASS" -e "
                                 set ftp:ssl-allow no;
                                 ls ${env.FTP_REMOTE_DIR};
                                 quit
-                            " ${env.FTP_SERVER}
-                        """
+                            " ${env.FTP_SERVER} || exit 1
+                        '''.stripIndent()
                     }
                 }
             }
@@ -50,13 +62,14 @@ pipeline {
                         usernameVariable: 'FTP_USER',
                         passwordVariable: 'FTP_PASS'
                     )]) {
-                        sh """
-                            lftp -u "\$FTP_USER","\$FTP_PASS" -e "
+                        sh '''
+                            backup_dir="${env.FTP_REMOTE_DIR}_backup_$(date +'%Y%m%d')"
+                            lftp -u "$FTP_USER","$FTP_PASS" -e "
                                 set ftp:ssl-allow no;
-                                mirror --reverse --delete ${env.FTP_REMOTE_DIR} ${env.FTP_REMOTE_DIR}_backup_\$(date +'%Y%m%d');
+                                mirror --reverse --delete ${env.FTP_REMOTE_DIR} $backup_dir;
                                 quit
                             " ${env.FTP_SERVER}
-                        """
+                        '''.stripIndent()
                     }
                 }
             }
@@ -102,13 +115,14 @@ pipeline {
 
     post {
         always {
-            echo "🚀 Deployment completed with status: ${currentBuild.currentResult}"
+            echo "🚀 Deployment pipeline completed with status: ${currentBuild.currentResult}"
+            cleanWs() // Clean workspace after build
         }
         success {
-            echo "✅ Deployment succeeded!"
+            echo "✅ Success: Website deployed to ${env.DEPLOYMENT_URL}"
         }
         failure {
-            echo "❌ Deployment failed!"
+            echo "❌ Failure: Deployment to ${env.DEPLOYMENT_URL} failed"
         }
     }
 }
