@@ -24,24 +24,25 @@ pipeline {
         stage('Deploy to Hostinger') {
             steps {
                 sh '''
-                echo "📂 Local directory contents:"
+                echo "📂 Verifying workspace contents:"
                 ls -al $LOCAL_DIR
 
                 if ! command -v lftp > /dev/null 2>&1; then
-                    echo "❌ 'lftp' is not installed. Please install it on the Jenkins server manually."
+                    echo "❌ 'lftp' is not installed."
                     exit 1
                 fi
 
-                echo "✅ 'lftp' is available. Proceeding with FTP deployment."
-
+                echo "🔐 Testing FTP connection..."
                 lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" -e "
-                    set ssl:verify-certificate no;
-                    mirror -R --delete --exclude-glob .git* --exclude README.md $LOCAL_DIR /public_html/;
+                    pwd;
+                    ls;
+                    mirror -R --delete --verbose $LOCAL_DIR public_html;
                     quit
                 "
                 '''
             }
         }
+
 
         stage('Post-Deployment') {
             steps {
