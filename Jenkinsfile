@@ -2,12 +2,13 @@ pipeline {
     agent any
 
     environment {
-        // Using specific FTP_HOST instead of domain name
-        FTP_HOST = 'ftp.shobhityadav.com' // Try this instead of shobhityadav.com
+        // Using specific FTP details
+        FTP_HOST = 'ftp.shobhityadav.com'
         FTP_USERNAME = 'u964324091'
         FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.'
         REMOTE_DIR = 'public_html'
+        SITE_URL = 'https://shobhityadav.com' // For verification
     }
 
     stages {
@@ -24,6 +25,14 @@ pipeline {
                 ls -la
                 echo "Creating test file..."
                 echo "Test file from Jenkins - $(date)" > test_file.txt
+                
+                # Ensure all files have proper permissions
+                find . -type f -name "*.html" -exec chmod 644 {} \\;
+                find . -type f -name "*.css" -exec chmod 644 {} \\;
+                find . -type f -name "*.js" -exec chmod 644 {} \\;
+                find . -type f -name "*.jpg" -exec chmod 644 {} \\;
+                find . -type f -name "*.png" -exec chmod 644 {} \\;
+                find . -type f -name "*.gif" -exec chmod 644 {} \\;
                 '''
             }
         }
@@ -31,49 +40,102 @@ pipeline {
         stage('Deploy to Hostinger') {
             steps {
                 sh '''
-                echo "🔄 Creating LFTP script with SSL verification disabled..."
+                echo "🔄 Deploying with curl method (more reliable)..."
                 
-                # Create simple LFTP script
-                cat > deploy.lftp << EOF
-                set ssl:verify-certificate no
-                set ftp:ssl-allow yes
-                set ftp:ssl-protect-data yes
-                open -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_HOST"
-                pwd
-                ls -la
-                mirror -R --verbose=3 --delete "$LOCAL_DIR" "$REMOTE_DIR"
-                bye
-                EOF
+                # First make sure the target directory exists
+                curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                     -Q "MKD $REMOTE_DIR" \
+                     "ftp://$FTP_HOST/"
                 
-                # Execute LFTP script
-                lftp -f deploy.lftp
+                # Upload HTML files
+                find . -type f -name "*.html" | while read file; do
+                    echo "Uploading $file..."
+                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                         -T "$file" \
+                         "ftp://$FTP_HOST/$REMOTE_DIR/$(basename $file)"
+                done
                 
-                echo "✅ LFTP deployment completed"
+                # Upload CSS files
+                find ./css -type f -name "*.css" 2>/dev/null | while read file; do
+                    echo "Uploading $file..."
+                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                         -Q "MKD $REMOTE_DIR/css" \
+                         "ftp://$FTP_HOST/" || true
+                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                         -T "$file" \
+                         "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename $file)"
+                done
+                
+                # Upload JS files
+                find ./js -type f -name "*.js" 2>/dev/null | while read file; do
+                    echo "Uploading $file..."
+                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                         -Q "MKD $REMOTE_DIR/js" \
+                         "ftp://$FTP_HOST/" || true
+                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                         -T "$file" \
+                         "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename $file)"
+                done
+                
+                # Upload image files (create directory first)
+                if [ -d "./images" ]; then
+                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                         -Q "MKD $REMOTE_DIR/images" \
+                         "ftp://$FTP_HOST/" || true
+                         
+                    find ./images -type f -name "*.jpg" -o -name "*.png" -o -name "*.gif" | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                             -T "$file" \
+                             "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename $file)"
+                    done
+                fi
+                
+                # Upload test file to verify deployment
+                curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                     -T "test_file.txt" \
+                     "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
+                     
+                echo "✅ Curl deployment completed"
                 '''
             }
         }
         
-        stage('Try Alternative Deployment') {
-            when {
-                expression { currentBuild.result == 'FAILURE' || true }
-            }
+        stage('Verify Deployment') {
             steps {
                 sh '''
-                echo "🔄 Trying simple FTP upload with curl..."
+                echo "🔍 Verifying deployment..."
+                # Wait a moment for files to be properly processed
+                sleep 5
                 
-                # Upload index.html as test
-                curl -v --ftp-ssl-reqd --insecure --ssl-reqd \
-                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                     -T "index.html" \
-                     "ftp://$FTP_HOST/$REMOTE_DIR/"
+                # Check if we can access the main page
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL")
                 
-                # Upload test file
-                curl -v --ftp-ssl-reqd --insecure --ssl-reqd \
-                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                     -T "test_file.txt" \
-                     "ftp://$FTP_HOST/$REMOTE_DIR/"
-                     
-                echo "✅ Curl deployment completed"
+                if [ "$HTTP_CODE" -eq 200 ]; then
+                    echo "✅ Website is accessible (HTTP 200 OK)"
+                else
+                    echo "⚠️ Website returned HTTP code: $HTTP_CODE"
+                    echo "This might indicate a server configuration issue."
+                fi
+                
+                # Check if our test file is accessible
+                TEST_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL/test_file.txt")
+                
+                if [ "$TEST_CODE" -eq 200 ]; then
+                    echo "✅ Test file is accessible (HTTP 200 OK)"
+                else
+                    echo "⚠️ Test file returned HTTP code: $TEST_CODE"
+                    echo "This might indicate a server configuration issue."
+                fi
                 '''
             }
         }
@@ -82,10 +144,19 @@ pipeline {
     post {
         always {
             echo "💡 Troubleshooting information:"
-            echo "1. The main issue appears to be SSL certificate verification problems"
-            echo "2. Try using 'ftp.shobhityadav.com' instead of 'shobhityadav.com'"
-            echo "3. Alternatively, log into Hostinger control panel to verify correct FTP hostname"
-            echo "4. Consider creating a simple FTP deploy script outside Jenkins to test credentials"
+            echo "1. Verify files were uploaded correctly by checking the Hostinger File Manager"
+            echo "2. Check if the website is using the correct document root (public_html)"
+            echo "3. If the website shows 'It feels lonely here...', the file structure may be incorrect"
+            echo "4. Make sure index.html is in the root of public_html directory"
+            echo "5. Clear browser cache and try accessing the site in incognito mode"
+        }
+        success {
+            echo "✅ Deployment appears successful. If the site still doesn't display correctly:"
+            echo "   - Try purging the Hostinger cache from control panel"
+            echo "   - Verify DNS settings are pointing to the correct hosting"
+        }
+        failure {
+            echo "❌ Deployment failed. Check the logs above for specific errors."
         }
     }
 }
