@@ -20,6 +20,7 @@ pipeline {
                 echo "🔍 Skipping security scan — no dependencies"
             }
         }
+
         stage('Deploy to Hostinger') {
             steps {
                 sh '''
@@ -31,12 +32,14 @@ pipeline {
                 echo "✅ 'lftp' is available. Proceeding with FTP deployment."
 
                 lftp -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER <<EOF
+                set ssl:verify-certificate no
                 mirror -R --delete $LOCAL_DIR /public_html/
                 quit
                 EOF
                 '''
             }
         }
+
         stage('Post-Deployment') {
             steps {
                 echo "🚀 Deployment completed!"
