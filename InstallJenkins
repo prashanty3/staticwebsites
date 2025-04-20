@@ -1,0 +1,22 @@
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Java (Jenkins requires Java)
+sudo apt install fontconfig openjdk-21-jre
+
+# Add Jenkins key & repo
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian/jenkins.io-2023.key
+
+
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
+  https://pkg.jenkins.io/debian binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+# Install Jenkins
+sudo apt-get update
+sudo apt-get install jenkins
+
+# Start and enable Jenkins
+sudo systemctl start jenkins
+sudo systemctl enable jenkins

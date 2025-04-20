@@ -1,0 +1,235 @@
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Winky+Rough:ital,wght@0,300..900;1,300..900&display=swap');
+a{
+    list-style: none;
+    text-decoration: none !important;
+}
+.menubar
+{
+    padding: 10px 30px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 1000;
+}
+
+.menubar .menubar-list
+{
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.menubar .menubar-list .menubar-item .menubar-link
+{
+    color: #000;
+    font-family: "Winky Rough", sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    text-decoration: none;
+    position: relative;
+}   
+.menubar .menubar-list .menubar-item .menubar-link::after
+{
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background-color: red;
+    content: '';
+    transition: all 0.3s ease-in-out;
+}
+
+.menubar .menubar-list .menubar-item .menubar-link:hover::after
+{
+    width: 100%;
+}
+.menubar .menubar-list .menubar-item .menubar-link:hover
+{
+    color: red;
+}
+.header
+{
+    background: url('../images/header.jpg');
+    height: 100vh;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    filter: brightness(80%);
+}
+
+.menubar .menubar-list .menubar-item .right-link
+{
+    color: #000;
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.header .sidebar
+{
+    position: absolute;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100%;
+    background-color: white;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; 
+    transition: all 0.3s ease-in-out;  
+}
+
+.header .sidebar .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 5px 5px -5px rgba(0, 0, 0, 0.1);
+    padding: 10px 15px;
+}
+.header .sidebar .sidebar-header .menu-close
+{
+    font-size: 18px;
+    color: #000;
+    cursor: pointer;
+}
+.header .sidebar .sidebar-menubar-list
+{
+    list-style: none;
+    padding-left: 0px;
+}
+.header .sidebar .sidebar-menubar-list .sidebar-menubar-item
+{
+    padding: 10px 2rem;
+}
+
+.header .sidebar .sidebar-menubar-list .sidebar-menubar-item .sidebar-menubar-link
+{
+    color: #000;
+    font-family: "Winky Rough", sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    text-decoration: none;
+}  
+.header .sidebar .sidebar-menubar-list .sidebar-menubar-item:hover
+{
+    cursor: pointer;
+}
+.header .sidebar .sidebar-menubar-list .sidebar-menubar-item:hover .sidebar-menubar-link
+{
+    color: red;
+}  
+.header .sidebar .social-icons
+{
+    display: flex;
+    gap: 10%;
+    padding: 0px 20px;
+    margin-bottom: 20px;
+}
+.header .sidebar .social-icons .social-icon:hover
+{
+    background-color: red;
+    color: black;
+    transition: all 0.3s ease-in-out;
+}
+.menu-bar
+{
+    display: none;
+}
+.header .sidebar .social-icons .social-icon
+{
+    padding: 10px;
+    border-radius: 50%;
+    background-color: #000;
+    height: 40px;
+    width: 40px;
+    display: flex;
+    justify-content: center;  
+    color: white;  
+}
+@media (max-width:772px) {
+    .menubar .menubar-list
+    {
+        display: none;
+    }
+    .menubar .menubar-list .menubar-item .right-link
+    {
+        display: none;
+    }  
+    .menu-bar
+    {
+        display: block;
+    } 
+}
+
+
+/* .header-content
+{
+    padding: 40px 70px;
+    color: #6F4E37;
+} */
+.header-content
+{
+    position: absolute;
+    top: 35%;
+    left: 25%;
+    transform: translate(-40%, -25%);
+}
+.header-content .small-heading
+{
+    font-size: 20px;
+    font-weight: 700;
+    color: whitesmoke;
+}
+.header-content .heading
+{
+    font-size: 40px;
+    font-weight: 700;
+    color: #4f3624;
+    margin: 20px 0;
+    font-family: Winky Rough, sans-serif;
+}  
+.header-content .heading span
+{
+    color: white;
+    font-size: 55px;
+} 
+
+.header-content .description
+{
+    font-size: 20px;
+    font-weight: 500;
+    color: #4f3624;
+    margin-bottom: 20px;
+    font-family: Bodoni Moda, serif;
+}
+
+
+@media (max-width: 772px) {
+    .header-content
+    {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+    }
+    .header-content .heading
+    {
+        font-size: 30px;
+    }  
+    .header-content .heading span
+    {
+        font-size: 40px;
+    } 
+    .header-content .description
+    {
+        font-size: 15px;
+    }
+    .header-content .small-heading
+    {
+        font-size: 15px;
+    }
+    
+}

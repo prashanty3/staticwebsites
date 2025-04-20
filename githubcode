@@ -1,0 +1,16 @@
+cd path/to/myStaticWebsite
+
+# Initialize git
+git init
+
+# Add remote GitHub repo
+git remote add origin https://github.com/prashanty3/staticwebsites.git
+
+# Add all files
+git add .
+
+# Commit
+git commit -m "Initial commit"
+
+# Push to GitHub
+git push -u origin master
