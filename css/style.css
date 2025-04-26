@@ -233,3 +233,61 @@ a{
     }
     
 }
+
+.about-heading
+{
+    font-size: 40px;
+    font-weight: 700;
+    color: #4f3624;
+    margin: 20px 0;
+    font-family: Winky Rough, sans-serif;
+    position: relative;
+}
+.about-heading span
+{
+    color: red;
+    font-size: 55px;
+}
+
+.about-heading::after
+{
+    content: '';
+    display: block;
+    width: 80px;
+    height: 5px;
+    background-color: red;
+    margin-top: 5px;
+}
+.about-heading::before
+{
+    content: '';
+    display: block;
+    width: 80px;
+    height: 5px;
+    background-color: red;
+    margin-top: 5px;
+}
+
+.about-description
+{
+    color:#000;
+    margin-bottom: 25px;
+    font-family: Bodoni Moda, serif;
+}
+
+.about-description span
+{
+    color: red;
+    font-weight: 700;
+}
+@media (max-width: 772px) {
+    .about-heading
+    {
+        font-size: 25px;
+    }  
+    .about-heading span
+    {
+        font-size: 40px;
+    } 
+    
+}
