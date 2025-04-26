@@ -5,7 +5,7 @@ pipeline {
         // Using specific FTP details
         FTP_HOST = 'ftp.shobhityadav.com'
         FTP_USERNAME = 'u964324091'
-        FTP_PASSWORD = '***********'
+        FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.'
         REMOTE_DIR = 'domains/shobhityadav.com/public_html'
         SITE_URL = 'https://shobhityadav.com' // For verification
