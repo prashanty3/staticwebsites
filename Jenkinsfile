@@ -33,6 +33,7 @@ pipeline {
                 find . -type f -name "*.jpg" -exec chmod 644 {} \\;
                 find . -type f -name "*.png" -exec chmod 644 {} \\;
                 find . -type f -name "*.gif" -exec chmod 644 {} \\;
+                find . -type f -name "*.ico" -exec chmod 644 {} \\;
                 '''
             }
         }
@@ -75,7 +76,7 @@ pipeline {
 
                 # Upload images
                 if [ -d "./images" ]; then
-                    find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) | while read file; do
+                    find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.ico"\\) | while read file; do
                         echo "Uploading $file..."
                         curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
