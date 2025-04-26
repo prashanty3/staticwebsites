@@ -85,6 +85,14 @@ pipeline {
                     done
                 fi
 
+                if [ -f "./images/favicon.ico" ]; then
+                    echo "Uploading favicon.ico separately..."
+                    curl --ftp-ssl-reqd --ftp-create-dirs --insecure --ftp-pasv \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -T "./images/favicon.ico" \
+                        "ftp://$FTP_HOST/$REMOTE_DIR/images/favicon.ico"
+                fi
+
                 # Upload test file
                 echo "Uploading test file..."
                 curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
