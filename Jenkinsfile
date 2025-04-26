@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps { 
-                git credentialsId: 'github-token-new-new', url: 'https://github.com/prashanty3/staticwebsites.git'
+                git credentialsId: 'github-token', url: 'https://github.com/prashanty3/staticwebsites.git'
             }
         }
 
