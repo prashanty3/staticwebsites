@@ -11,6 +11,12 @@ pipeline {
     }
 
     stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
         stage('Checkout Code') {
             steps {
                 git credentialsId: 'github-token', url: 'https://github.com/prashanty3/staticwebsites.git'
@@ -22,16 +28,12 @@ pipeline {
                 sh '''
                 echo "📂 Verifying workspace contents:"
                 ls -la
+
                 echo "Creating test file..."
                 echo "Test file from Jenkins - $(date)" > test_file.txt
 
                 # Set correct permissions
-                find . -type f -name "*.html" -exec chmod 644 {} \\;
-                find . -type f -name "*.css" -exec chmod 644 {} \\;
-                find . -type f -name "*.js" -exec chmod 644 {} \\;
-                find . -type f -name "*.jpg" -exec chmod 644 {} \\;
-                find . -type f -name "*.png" -exec chmod 644 {} \\;
-                find . -type f -name "*.gif" -exec chmod 644 {} \\;
+                find . -type f \\( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) -exec chmod 644 {} \\;
                 '''
             }
         }
@@ -41,54 +43,14 @@ pipeline {
                 sh '''
                 echo "🔄 Deploying files to Hostinger FTP..."
 
-                # Upload HTML files
-                find . -type f -name "*.html" | while read file; do
-                    echo "Uploading $file..."
-                    curl --ftp-ssl-reqd --insecure \
-                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                # Upload all relevant files preserving directory structure
+                find . -type f \\( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" -o -iname "test_file.txt" \\) | while read file; do
+                    REMOTE_PATH=${file#./}
+                    echo "Uploading $file to $REMOTE_DIR/$REMOTE_PATH ..."
+                    curl --ftp-ssl-reqd --ftp-create-dirs --user "$FTP_USERNAME:$FTP_PASSWORD" \
                         -T "$file" \
-                        "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
+                        "ftp://$FTP_HOST/$REMOTE_DIR/$REMOTE_PATH"
                 done
-
-                # Upload CSS files
-                if [ -d "./css" ]; then
-                    find ./css -type f -name "*.css" | while read file; do
-                        echo "Uploading $file..."
-                        curl --ftp-ssl-reqd --insecure \
-                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                            -T "$file" \
-                            "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename "$file")"
-                    done
-                fi
-
-                # Upload JS files
-                if [ -d "./js" ]; then
-                    find ./js -type f -name "*.js" | while read file; do
-                        echo "Uploading $file..."
-                        curl --ftp-ssl-reqd --insecure \
-                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                            -T "$file" \
-                            "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename "$file")"
-                    done
-                fi
-
-                # Upload Images
-                if [ -d "./images" ]; then
-                    find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) | while read file; do
-                        echo "Uploading $file..."
-                        curl --ftp-ssl-reqd --insecure \
-                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                            -T "$file" \
-                            "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename "$file")"
-                    done
-                fi
-
-                # Upload Test File
-                echo "Uploading test file..."
-                curl --ftp-ssl-reqd --insecure \
-                    --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                    -T "test_file.txt" \
-                    "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
 
                 echo "✅ Deployment completed successfully."
                 '''
