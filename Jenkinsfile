@@ -4,7 +4,7 @@ pipeline {
     environment {
         FTP_HOST = 'ftp.shobhityadav.com'
         FTP_USERNAME = 'u964324091'
-        FTP_PASSWORD = 'Saumyashant@2615'
+        FTP_PASSWORD = 'Saumyashant@26'
         LOCAL_DIR = '.'
         REMOTE_DIR = 'domains/shobhityadav.com/public_html'
         SITE_URL = 'https://shobhityadav.com'
