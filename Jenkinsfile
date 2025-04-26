@@ -2,13 +2,12 @@ pipeline {
     agent any
 
     environment {
-        // Using specific FTP details
         FTP_HOST = 'ftp.shobhityadav.com'
         FTP_USERNAME = 'u964324091'
         FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.'
-        REMOTE_DIR = 'domains/shobhityadav.com/public_html'
-        SITE_URL = 'https://shobhityadav.com' // For verification
+        REMOTE_DIR = '.'  // ✅ Just root after FTP login
+        SITE_URL = 'https://shobhityadav.com'
     }
 
     stages {
@@ -26,7 +25,7 @@ pipeline {
                 echo "Creating test file..."
                 echo "Test file from Jenkins - $(date)" > test_file.txt
                 
-                # Ensure all files have proper permissions
+                # Set correct permissions
                 find . -type f -name "*.html" -exec chmod 644 {} \\;
                 find . -type f -name "*.css" -exec chmod 644 {} \\;
                 find . -type f -name "*.js" -exec chmod 644 {} \\;
@@ -48,7 +47,7 @@ pipeline {
                     curl --ftp-ssl-reqd --insecure \
                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
                         -T "$file" \
-                        "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
+                        "ftp://$FTP_HOST/$(basename "$file")"
                 done
 
                 # Upload CSS files
@@ -58,7 +57,7 @@ pipeline {
                         curl --ftp-ssl-reqd --insecure \
                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
                             -T "$file" \
-                            "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename "$file")"
+                            "ftp://$FTP_HOST/css/$(basename "$file")"
                     done
                 fi
 
@@ -69,7 +68,7 @@ pipeline {
                         curl --ftp-ssl-reqd --insecure \
                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
                             -T "$file" \
-                            "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename "$file")"
+                            "ftp://$FTP_HOST/js/$(basename "$file")"
                     done
                 fi
 
@@ -80,7 +79,7 @@ pipeline {
                         curl --ftp-ssl-reqd --insecure \
                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
                             -T "$file" \
-                            "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename "$file")"
+                            "ftp://$FTP_HOST/images/$(basename "$file")"
                     done
                 fi
 
@@ -89,34 +88,30 @@ pipeline {
                 curl --ftp-ssl-reqd --insecure \
                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
                     -T "test_file.txt" \
-                    "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
+                    "ftp://$FTP_HOST/test_file.txt"
 
                 echo "✅ Deployment completed successfully."
                 '''
             }
         }
 
-        
         stage('Verify Deployment') {
             steps {
                 sh '''
                 echo "🔍 Verifying deployment..."
-                # Wait a moment for files to be properly processed
                 sleep 5
-                
-                # Check if we can access the main page
+
+                # Verify index.html
                 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL")
-                
                 if [ "$HTTP_CODE" -eq 200 ]; then
                     echo "✅ Website is accessible (HTTP 200 OK)"
                 else
                     echo "⚠️ Website returned HTTP code: $HTTP_CODE"
                     echo "This might indicate a server configuration issue."
                 fi
-                
-                # Check if our test file is accessible
+
+                # Verify test file
                 TEST_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL/test_file.txt")
-                
                 if [ "$TEST_CODE" -eq 200 ]; then
                     echo "✅ Test file is accessible (HTTP 200 OK)"
                 else
@@ -127,23 +122,19 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             echo "💡 Troubleshooting information:"
-            echo "1. Verify files were uploaded correctly by checking the Hostinger File Manager"
-            echo "2. Check if the website is using the correct document root (public_html)"
-            echo "3. If the website shows 'It feels lonely here...', the file structure may be incorrect"
-            echo "4. Make sure index.html is in the root of public_html directory"
-            echo "5. Clear browser cache and try accessing the site in incognito mode"
+            echo "1. Verify files were uploaded correctly in Hostinger File Manager."
+            echo "2. Ensure 'index.html' is directly inside 'public_html'."
+            echo "3. Clear browser cache if changes are not visible."
         }
         success {
-            echo "✅ Deployment appears successful. If the site still doesn't display correctly:"
-            echo "   - Try purging the Hostinger cache from control panel"
-            echo "   - Verify DNS settings are pointing to the correct hosting"
+            echo "✅ Deployment appears successful. Consider purging Hostinger cache if needed."
         }
         failure {
-            echo "❌ Deployment failed. Check the logs above for specific errors."
+            echo "❌ Deployment failed. Please check logs above for errors."
         }
     }
 }
