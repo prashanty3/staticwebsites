@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        FTP_HOST = 'ftp.shobhityadav.com'
+        FTP_HOST = 'ftp.shobhityadav.com:21' // Confirm port (21 for FTP, 990 for FTPS)
         FTP_USERNAME = 'u964324091'
         FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.'
-        REMOTE_DIR = 'domains/shobhityadav.com/public_html'
+        REMOTE_DIR = '' // Correct: Hostinger's FTP root is public_html
         SITE_URL = 'https://shobhityadav.com'
     }
 
@@ -33,7 +33,7 @@ pipeline {
                 echo "Test file from Jenkins - $(date)" > test_file.txt
 
                 # Set correct permissions
-                find . -type f \\( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) -exec chmod 644 {} \\;
+                find . -type f \( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \) -exec chmod 644 {} \;
                 '''
             }
         }
@@ -43,13 +43,13 @@ pipeline {
                 sh '''
                 echo "🔄 Deploying files to Hostinger FTP..."
 
-                # Upload all relevant files preserving directory structure
-                find . -type f \\( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" -o -iname "test_file.txt" \\) | while read file; do
+                # Upload files with passive mode
+                find . -type f \( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" -o -iname "test_file.txt" \) | while read file; do
                     REMOTE_PATH=${file#./}
-                    echo "Uploading $file to $REMOTE_DIR/$REMOTE_PATH ..."
-                    curl --ftp-ssl --ftp-create-dirs --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                    -T "$file" \
-                    "ftps://$FTP_HOST/$REMOTE_DIR/$REMOTE_PATH"
+                    echo "Uploading $file to $REMOTE_PATH ..."
+                    curl --ftp-ssl-reqd --ftp-pasv --ftp-create-dirs --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -T "$file" \
+                        "ftp://$FTP_HOST/$REMOTE_PATH"
                 done
 
                 echo "✅ Deployment completed successfully."
