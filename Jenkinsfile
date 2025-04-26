@@ -6,13 +6,13 @@ pipeline {
         FTP_USERNAME = 'u964324091'
         FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.'
-        REMOTE_DIR = '.'  // ✅ Just root after FTP login
+        REMOTE_DIR = 'domains/shobhityadav.com/public_html'
         SITE_URL = 'https://shobhityadav.com'
     }
 
     stages {
         stage('Checkout Code') {
-            steps { 
+            steps {
                 git credentialsId: 'github-token', url: 'https://github.com/prashanty3/staticwebsites.git'
             }
         }
@@ -24,7 +24,7 @@ pipeline {
                 ls -la
                 echo "Creating test file..."
                 echo "Test file from Jenkins - $(date)" > test_file.txt
-                
+
                 # Set correct permissions
                 find . -type f -name "*.html" -exec chmod 644 {} \\;
                 find . -type f -name "*.css" -exec chmod 644 {} \\;
@@ -47,7 +47,7 @@ pipeline {
                     curl --ftp-ssl-reqd --insecure \
                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
                         -T "$file" \
-                        "ftp://$FTP_HOST/$(basename "$file")"
+                        "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
                 done
 
                 # Upload CSS files
@@ -57,7 +57,7 @@ pipeline {
                         curl --ftp-ssl-reqd --insecure \
                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
                             -T "$file" \
-                            "ftp://$FTP_HOST/css/$(basename "$file")"
+                            "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename "$file")"
                     done
                 fi
 
@@ -68,27 +68,27 @@ pipeline {
                         curl --ftp-ssl-reqd --insecure \
                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
                             -T "$file" \
-                            "ftp://$FTP_HOST/js/$(basename "$file")"
+                            "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename "$file")"
                     done
                 fi
 
-                # Upload images
+                # Upload Images
                 if [ -d "./images" ]; then
                     find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) | while read file; do
                         echo "Uploading $file..."
                         curl --ftp-ssl-reqd --insecure \
                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
                             -T "$file" \
-                            "ftp://$FTP_HOST/images/$(basename "$file")"
+                            "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename "$file")"
                     done
                 fi
 
-                # Upload test file
+                # Upload Test File
                 echo "Uploading test file..."
                 curl --ftp-ssl-reqd --insecure \
                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
                     -T "test_file.txt" \
-                    "ftp://$FTP_HOST/test_file.txt"
+                    "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
 
                 echo "✅ Deployment completed successfully."
                 '''
@@ -101,22 +101,22 @@ pipeline {
                 echo "🔍 Verifying deployment..."
                 sleep 5
 
-                # Verify index.html
+                # Check main page
                 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL")
+
                 if [ "$HTTP_CODE" -eq 200 ]; then
                     echo "✅ Website is accessible (HTTP 200 OK)"
                 else
                     echo "⚠️ Website returned HTTP code: $HTTP_CODE"
-                    echo "This might indicate a server configuration issue."
                 fi
 
-                # Verify test file
+                # Check test file
                 TEST_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL/test_file.txt")
+
                 if [ "$TEST_CODE" -eq 200 ]; then
                     echo "✅ Test file is accessible (HTTP 200 OK)"
                 else
                     echo "⚠️ Test file returned HTTP code: $TEST_CODE"
-                    echo "This might indicate a server configuration issue."
                 fi
                 '''
             }
@@ -125,16 +125,17 @@ pipeline {
 
     post {
         always {
-            echo "💡 Troubleshooting information:"
-            echo "1. Verify files were uploaded correctly in Hostinger File Manager."
-            echo "2. Ensure 'index.html' is directly inside 'public_html'."
-            echo "3. Clear browser cache if changes are not visible."
+            echo "💡 Troubleshooting info:"
+            echo "1. Check files via Hostinger File Manager"
+            echo "2. Verify 'public_html' is the correct document root"
+            echo "3. Ensure 'index.html' is at the root level"
+            echo "4. Clear browser cache or use incognito"
         }
         success {
-            echo "✅ Deployment appears successful. Consider purging Hostinger cache if needed."
+            echo "✅ Deployment successful. If issues, clear Hostinger cache and check DNS settings."
         }
         failure {
-            echo "❌ Deployment failed. Please check logs above for errors."
+            echo "❌ Deployment failed. Review the logs above carefully."
         }
     }
 }
