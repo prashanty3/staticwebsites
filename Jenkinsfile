@@ -47,9 +47,9 @@ pipeline {
                 find . -type f \\( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" -o -iname "test_file.txt" \\) | while read file; do
                     REMOTE_PATH=${file#./}
                     echo "Uploading $file to $REMOTE_DIR/$REMOTE_PATH ..."
-                    curl --ftp-ssl-reqd --ftp-create-dirs --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                        -T "$file" \
-                        "ftp://$FTP_HOST/$REMOTE_DIR/$REMOTE_PATH"
+                    curl --ftp-ssl --ftp-create-dirs --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                    -T "$file" \
+                    "ftps://$FTP_HOST/$REMOTE_DIR/$REMOTE_PATH"
                 done
 
                 echo "✅ Deployment completed successfully."
