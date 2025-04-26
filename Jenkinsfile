@@ -46,7 +46,7 @@ pipeline {
                 curl --ftp-ssl-reqd --insecure --ssl-reqd \
                      --user "$FTP_USERNAME:$FTP_PASSWORD" \
                      -Q "MKD $REMOTE_DIR" \
-                     "ftp://$FTP_HOST/"
+                     "ftp://$FTP_HOST/" || true
                 
                 # Upload HTML files
                 find . -type f -name "*.html" | while read file; do
