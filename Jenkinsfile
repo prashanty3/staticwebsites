@@ -2,23 +2,18 @@ pipeline {
     agent any
 
     environment {
-        FTP_HOST = 'ftp.shobhityadav.com:21' // Confirm port (21 for FTP, 990 for FTPS)
+        // Using specific FTP details
+        FTP_HOST = 'ftp.shobhityadav.com'
         FTP_USERNAME = 'u964324091'
         FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.'
-        REMOTE_DIR = '' // Correct: Hostinger's FTP root is public_html
-        SITE_URL = 'https://shobhityadav.com'
+        REMOTE_DIR = 'public_html'
+        SITE_URL = 'https://shobhityadav.com' // For verification
     }
 
     stages {
-        stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
-
         stage('Checkout Code') {
-            steps {
+            steps { 
                 git credentialsId: 'github-token', url: 'https://github.com/prashanty3/staticwebsites.git'
             }
         }
@@ -28,76 +23,127 @@ pipeline {
                 sh '''
                 echo "📂 Verifying workspace contents:"
                 ls -la
-
                 echo "Creating test file..."
                 echo "Test file from Jenkins - $(date)" > test_file.txt
-
-                # Set correct permissions
-                find . -type f \( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \) -exec chmod 644 {} \;
+                
+                # Ensure all files have proper permissions
+                find . -type f -name "*.html" -exec chmod 644 {} \\;
+                find . -type f -name "*.css" -exec chmod 644 {} \\;
+                find . -type f -name "*.js" -exec chmod 644 {} \\;
+                find . -type f -name "*.jpg" -exec chmod 644 {} \\;
+                find . -type f -name "*.png" -exec chmod 644 {} \\;
+                find . -type f -name "*.gif" -exec chmod 644 {} \\;
                 '''
             }
         }
 
         stage('Deploy to Hostinger') {
-            steps {
-                sh '''
-                echo "🔄 Deploying files to Hostinger FTP..."
+        steps {
+            sh '''
+            echo "🔄 Deploying files to Hostinger FTP..."
 
-                # Upload files with passive mode
-                find . -type f \( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" -o -iname "test_file.txt" \) | while read file; do
-                    REMOTE_PATH=${file#./}
-                    echo "Uploading $file to $REMOTE_PATH ..."
-                    curl --ftp-ssl-reqd --ftp-pasv --ftp-create-dirs --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            # Upload HTML files
+            find . -type f -name "*.html" | while read file; do
+                echo "Uploading $file..."
+                curl --ftp-ssl-reqd --insecure \
+                    --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                    -T "$file" \
+                    "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
+            done
+
+            # Upload CSS files
+            if [ -d "./css" ]; then
+                find ./css -type f -name "*.css" | while read file; do
+                    echo "Uploading $file..."
+                    curl --ftp-ssl-reqd --insecure \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
                         -T "$file" \
-                        "ftp://$FTP_HOST/$REMOTE_PATH"
+                        "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename "$file")"
                 done
+            fi
 
-                echo "✅ Deployment completed successfully."
-                '''
-            }
+            # Upload JS files
+            if [ -d "./js" ]; then
+                find ./js -type f -name "*.js" | while read file; do
+                    echo "Uploading $file..."
+                    curl --ftp-ssl-reqd --insecure \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -T "$file" \
+                        "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename "$file")"
+                done
+            fi
+
+            # Upload images
+            if [ -d "./images" ]; then
+                find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) | while read file; do
+                    echo "Uploading $file..."
+                    curl --ftp-ssl-reqd --insecure \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -T "$file" \
+                        "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename "$file")"
+                done
+            fi
+
+            # Upload test file
+            echo "Uploading test file..."
+            curl --ftp-ssl-reqd --insecure \
+                --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                -T "test_file.txt" \
+                "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
+
+            echo "✅ Deployment completed successfully."
+            '''
         }
+    }
 
+        
         stage('Verify Deployment') {
             steps {
                 sh '''
                 echo "🔍 Verifying deployment..."
+                # Wait a moment for files to be properly processed
                 sleep 5
-
-                # Check main page
+                
+                # Check if we can access the main page
                 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL")
-
+                
                 if [ "$HTTP_CODE" -eq 200 ]; then
                     echo "✅ Website is accessible (HTTP 200 OK)"
                 else
                     echo "⚠️ Website returned HTTP code: $HTTP_CODE"
+                    echo "This might indicate a server configuration issue."
                 fi
-
-                # Check test file
+                
+                # Check if our test file is accessible
                 TEST_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL/test_file.txt")
-
+                
                 if [ "$TEST_CODE" -eq 200 ]; then
                     echo "✅ Test file is accessible (HTTP 200 OK)"
                 else
                     echo "⚠️ Test file returned HTTP code: $TEST_CODE"
+                    echo "This might indicate a server configuration issue."
                 fi
                 '''
             }
         }
     }
-
+    
     post {
         always {
-            echo "💡 Troubleshooting info:"
-            echo "1. Check files via Hostinger File Manager"
-            echo "2. Verify 'public_html' is the correct document root"
-            echo "3. Ensure 'index.html' is at the root level"
-            echo "4. Clear browser cache or use incognito"
+            echo "💡 Troubleshooting information:"
+            echo "1. Verify files were uploaded correctly by checking the Hostinger File Manager"
+            echo "2. Check if the website is using the correct document root (public_html)"
+            echo "3. If the website shows 'It feels lonely here...', the file structure may be incorrect"
+            echo "4. Make sure index.html is in the root of public_html directory"
+            echo "5. Clear browser cache and try accessing the site in incognito mode"
         }
         success {
-            echo "✅ Deployment successful. If issues, clear Hostinger cache and check DNS settings."
+            echo "✅ Deployment appears successful. If the site still doesn't display correctly:"
+            echo "   - Try purging the Hostinger cache from control panel"
+            echo "   - Verify DNS settings are pointing to the correct hosting"
         }
         failure {
-            echo "❌ Deployment failed. Review the logs above carefully."
+            echo "❌ Deployment failed. Check the logs above for specific errors."
         }
     }
 }
