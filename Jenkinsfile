@@ -7,7 +7,7 @@ pipeline {
         FTP_USERNAME = 'u964324091'
         FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.'
-        REMOTE_DIR = 'public_html'
+        REMOTE_DIR = 'domains/shobhityadav.com/public_html'
         SITE_URL = 'https://shobhityadav.com' // For verification
     }
 
@@ -41,74 +41,92 @@ pipeline {
             steps {
                 sh '''
                 echo "🔄 Deploying with curl method (more reliable)..."
-                
-                # First make sure the target directory exists
+
+                # First, create the remote base directory (if it doesn't exist)
                 curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                     -Q "MKD $REMOTE_DIR" \
-                     "ftp://$FTP_HOST/" || true
-                
+                    --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                    -Q "CWD domains" \
+                    "ftp://$FTP_HOST/" || true
+
+                curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                    --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                    -Q "CWD domains/shobhityadav.com" \
+                    "ftp://$FTP_HOST/" || true
+
+                curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                    --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                    -Q "CWD domains/shobhityadav.com/public_html" \
+                    "ftp://$FTP_HOST/" || true
+
                 # Upload HTML files
                 find . -type f -name "*.html" | while read file; do
                     echo "Uploading $file..."
                     curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                         -T "$file" \
-                         "ftp://$FTP_HOST/$REMOTE_DIR/$(basename $file)"
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -T "$file" \
+                        "ftp://$FTP_HOST/$REMOTE_DIR/$(basename $file)"
                 done
-                
+
                 # Upload CSS files
-                find ./css -type f -name "*.css" 2>/dev/null | while read file; do
-                    echo "Uploading $file..."
+                if [ -d "./css" ]; then
                     curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                         -Q "MKD $REMOTE_DIR/css" \
-                         "ftp://$FTP_HOST/" || true
-                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                         -T "$file" \
-                         "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename $file)"
-                done
-                
-                # Upload JS files
-                find ./js -type f -name "*.js" 2>/dev/null | while read file; do
-                    echo "Uploading $file..."
-                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                         -Q "MKD $REMOTE_DIR/js" \
-                         "ftp://$FTP_HOST/" || true
-                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                         -T "$file" \
-                         "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename $file)"
-                done
-                
-                # Upload image files (create directory first)
-                if [ -d "./images" ]; then
-                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                         -Q "MKD $REMOTE_DIR/images" \
-                         "ftp://$FTP_HOST/" || true
-                         
-                    find ./images -type f -name "*.jpg" -o -name "*.png" -o -name "*.gif" | while read file; do
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -Q "MKD $REMOTE_DIR/css" \
+                        "ftp://$FTP_HOST/" || true
+
+                    find ./css -type f -name "*.css" | while read file; do
                         echo "Uploading $file..."
                         curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                             --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                             -T "$file" \
-                             "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename $file)"
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename $file)"
                     done
                 fi
-                
-                # Upload test file to verify deployment
+
+                # Upload JS files
+                if [ -d "./js" ]; then
+                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -Q "MKD $REMOTE_DIR/js" \
+                        "ftp://$FTP_HOST/" || true
+
+                    find ./js -type f -name "*.js" | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename $file)"
+                    done
+                fi
+
+                # Upload images
+                if [ -d "./images" ]; then
+                    curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -Q "MKD $REMOTE_DIR/images" \
+                        "ftp://$FTP_HOST/" || true
+
+                    find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --insecure --ssl-reqd \
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename $file)"
+                    done
+                fi
+
+                # Upload test file
+                echo "Uploading test file..."
                 curl --ftp-ssl-reqd --insecure --ssl-reqd \
-                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                     -T "test_file.txt" \
-                     "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
-                     
-                echo "✅ Curl deployment completed"
+                    --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                    -T "test_file.txt" \
+                    "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
+
+                echo "✅ Curl deployment completed successfully."
                 '''
             }
         }
+
         
         stage('Verify Deployment') {
             steps {
