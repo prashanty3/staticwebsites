@@ -25,7 +25,7 @@ pipeline {
                 ls -la
                 echo "Creating test file..."
                 echo "Test file from Jenkins - $(date)" > test_file.txt
-                
+
                 # Ensure all files have proper permissions
                 find . -type f -name "*.html" -exec chmod 644 {} \\;
                 find . -type f -name "*.css" -exec chmod 644 {} \\;
@@ -38,73 +38,70 @@ pipeline {
         }
 
         stage('Deploy to Hostinger') {
-        steps {
-            sh '''
-            echo "🔄 Deploying files to Hostinger FTP..."
+            steps {
+                sh '''
+                echo "🔄 Deploying files to Hostinger FTP..."
 
-            # Upload HTML files
-            find . -type f -name "*.html" | while read file; do
-                echo "Uploading $file..."
-                curl --ftp-ssl-reqd --insecure \
+                # Upload HTML files
+                find . -type f -name "*.html" | while read file; do
+                    echo "Uploading $file..."
+                    curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -T "$file" \
+                        "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
+                done
+
+                # Upload CSS files
+                if [ -d "./css" ]; then
+                    find ./css -type f -name "*.css" | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename "$file")"
+                    done
+                fi
+
+                # Upload JS files
+                if [ -d "./js" ]; then
+                    find ./js -type f -name "*.js" | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename "$file")"
+                    done
+                fi
+
+                # Upload images
+                if [ -d "./images" ]; then
+                    find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename "$file")"
+                    done
+                fi
+
+                # Upload test file
+                echo "Uploading test file..."
+                curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
                     --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                    -T "$file" \
-                    "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
-            done
+                    -T "test_file.txt" \
+                    "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
 
-            # Upload CSS files
-            if [ -d "./css" ]; then
-                find ./css -type f -name "*.css" | while read file; do
-                    echo "Uploading $file..."
-                    curl --ftp-ssl-reqd --insecure \
-                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                        -T "$file" \
-                        "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename "$file")"
-                done
-            fi
-
-            # Upload JS files
-            if [ -d "./js" ]; then
-                find ./js -type f -name "*.js" | while read file; do
-                    echo "Uploading $file..."
-                    curl --ftp-ssl-reqd --insecure \
-                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                        -T "$file" \
-                        "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename "$file")"
-                done
-            fi
-
-            # Upload images
-            if [ -d "./images" ]; then
-                find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif" \\) | while read file; do
-                    echo "Uploading $file..."
-                    curl --ftp-ssl-reqd --insecure \
-                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                        -T "$file" \
-                        "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename "$file")"
-                done
-            fi
-
-            # Upload test file
-            echo "Uploading test file..."
-            curl --ftp-ssl-reqd --insecure \
-                --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                -T "test_file.txt" \
-                "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
-
-            echo "✅ Deployment completed successfully."
-            '''
+                echo "✅ Deployment completed successfully."
+                '''
+            }
         }
-    }
 
-        
         stage('Verify Deployment') {
             steps {
                 sh '''
                 echo "🔍 Verifying deployment..."
-                # Wait a moment for files to be properly processed
                 sleep 5
                 
-                # Check if we can access the main page
                 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL")
                 
                 if [ "$HTTP_CODE" -eq 200 ]; then
@@ -114,7 +111,6 @@ pipeline {
                     echo "This might indicate a server configuration issue."
                 fi
                 
-                # Check if our test file is accessible
                 TEST_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL/test_file.txt")
                 
                 if [ "$TEST_CODE" -eq 200 ]; then
