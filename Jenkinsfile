@@ -7,7 +7,7 @@ pipeline {
         FTP_USERNAME = 'u964324091'
         FTP_PASSWORD = 'Saumyashant@2615'
         LOCAL_DIR = '.'
-        REMOTE_DIR = 'public_html'
+        REMOTE_DIR = 'domains/shobhityadav.com/public_html'
         SITE_URL = 'https://shobhityadav.com' // For verification
     }
 
