@@ -18,45 +18,76 @@ pipeline {
             }
         }
 
+        stage('Prepare Deployment') {
+            steps {
+                sh '''
+                echo "📂 Verifying workspace contents:"
+                ls -la
+                echo "Creating test file..."
+                echo "Test file from Jenkins - $(date)" > test_file.txt
+
+                # Ensure all files have proper permissions
+                find . -type f -name "*.html" -exec chmod 644 {} \\;
+                find . -type f -name "*.css" -exec chmod 644 {} \\;
+                find . -type f -name "*.js" -exec chmod 644 {} \\;
+                find . -type f -name "*.jpg" -exec chmod 644 {} \\;
+                find . -type f -name "*.png" -exec chmod 644 {} \\;
+                find . -type f -name "*.gif" -exec chmod 644 {} \\;
+                find . -type f -name "*.ico" -exec chmod 644 {} \\;
+                '''
+            }
+        }
+
         stage('Deploy to Hostinger') {
             steps {
-                script {
-                    echo "🔄 Deploying entire GitHub repository to Hostinger FTP..."
+                sh '''
+                echo "🔄 Deploying files to Hostinger FTP..."
 
-                    // Use the entire repository and upload it
-                    sh '''
-                    # Upload all files and directories from the current directory
-                    echo "Uploading all files from the repository..."
-                    find . -type f | while read file; do
-                        echo "Uploading $file..."
-                        curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
-                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                            -T "$file" \
-                            "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
-                    done
-                    '''
-                }
+                # Upload all files
+                find . -type f | while read file; do
+                    echo "Uploading $file..."
+                    curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -T "$file" \
+                        "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
+                done
+
+                # Upload test file
+                echo "Uploading test file..."
+                curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                    --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                    -T "test_file.txt" \
+                    "ftp://$FTP_HOST/$REMOTE_DIR/test_file.txt"
+
+                echo "✅ Deployment completed successfully."
+                '''
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                script {
-                    echo "🔍 Verifying deployment..."
-
-                    // Wait for a short period to allow deployment to complete
-                    sleep 5
-
-                    // Check if the website is accessible
-                    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL")
-
-                    if [ "$HTTP_CODE" -eq 200 ]; then
-                        echo "✅ Website is accessible (HTTP 200 OK)"
-                    else
-                        echo "⚠️ Website returned HTTP code: $HTTP_CODE"
-                        echo "This might indicate a server configuration issue."
-                    fi
-                }
+                sh '''
+                echo "🔍 Verifying deployment..."
+                sleep 5
+                
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL")
+                
+                if [ "$HTTP_CODE" -eq 200 ]; then
+                    echo "✅ Website is accessible (HTTP 200 OK)"
+                else
+                    echo "⚠️ Website returned HTTP code: $HTTP_CODE"
+                    echo "This might indicate a server configuration issue."
+                fi
+                
+                TEST_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_URL/test_file.txt")
+                
+                if [ "$TEST_CODE" -eq 200 ]; then
+                    echo "✅ Test file is accessible (HTTP 200 OK)"
+                else
+                    echo "⚠️ Test file returned HTTP code: $TEST_CODE"
+                    echo "This might indicate a server configuration issue."
+                fi
+                '''
             }
         }
     }
@@ -72,7 +103,7 @@ pipeline {
         }
         success {
             echo "✅ Deployment appears successful. If the site still doesn't display correctly:"
-            echo "   - Try purging the Hostinger cache from the control panel"
+            echo "   - Try purging the Hostinger cache from control panel"
             echo "   - Verify DNS settings are pointing to the correct hosting"
         }
         failure {
