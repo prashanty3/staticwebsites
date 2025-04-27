@@ -43,14 +43,55 @@ pipeline {
                 sh '''
                 echo "🔄 Deploying files to Hostinger FTP..."
 
-                # Upload all files
-                find . -type f | while read file; do
+                # Upload HTML files
+                find . -type f -name "*.html" | while read file; do
                     echo "Uploading $file..."
                     curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
                         --user "$FTP_USERNAME:$FTP_PASSWORD" \
                         -T "$file" \
                         "ftp://$FTP_HOST/$REMOTE_DIR/$(basename "$file")"
                 done
+
+                # Upload CSS files
+                if [ -d "./css" ]; then
+                    find ./css -type f -name "*.css" | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/css/$(basename "$file")"
+                    done
+                fi
+
+                # Upload JS files
+                if [ -d "./js" ]; then
+                    find ./js -type f -name "*.js" | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/js/$(basename "$file")"
+                    done
+                fi
+
+                # Upload images
+                if [ -d "./images" ]; then
+                    find ./images -type f \\( -iname "*.jpg" -o -iname "*.png" -o -iname "*.gif"\\) | while read file; do
+                        echo "Uploading $file..."
+                        curl --ftp-ssl-reqd --ftp-create-dirs --insecure \
+                            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                            -T "$file" \
+                            "ftp://$FTP_HOST/$REMOTE_DIR/images/$(basename "$file")"
+                    done
+                fi
+
+                if [ -f "./images/favicon.ico" ]; then
+                    echo "Uploading favicon.ico separately..."
+                    curl --ftp-ssl-reqd --ftp-create-dirs --insecure --ftp-pasv \
+                        --user "$FTP_USERNAME:$FTP_PASSWORD" \
+                        -T "./images/favicon.ico" \
+                        "ftp://$FTP_HOST/$REMOTE_DIR/images/favicon.ico"
+                fi
 
                 # Upload test file
                 echo "Uploading test file..."
