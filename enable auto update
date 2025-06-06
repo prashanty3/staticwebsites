@@ -1,0 +1,11 @@
+#Under Build Triggers, check:
+    ✓ GitHub hook trigger for GITScm polling
+
+#In GitHub:
+    Go to your repo > Settings > Webhooks
+    Click Add webhook
+    Payload URL: http://your-jenkins-url/github-webhook/
+    (e.g., http://34.xx.xx.xx:8080/github-webhook/)
+    Content type: application/json
+    Choose: Just the push event
+    Click Add webhook
