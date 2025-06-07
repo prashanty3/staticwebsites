@@ -1,1 +1,5 @@
-dockerfiles
+git clone https://github.com/prashanty3/staticwebsites.git
+cd staticwebsites
+docker build -t prashantpsit/webstatick:v1 .
+docker login
+docker push prashantpsit/webstatick:v1
